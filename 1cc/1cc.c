@@ -107,7 +107,7 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (*p == '+' || *p == '-' || *p == '*' || *p == '/') {
+    if (*p == '+' || *p == '-' || *p == '*' || *p == '/' || *p == '(' || *p == ')') {
       cur = new_token(TK_RESERVED, cur, p++);
       continue;
     }
@@ -142,24 +142,9 @@ Node *new_node_num(int val) {
   return node;
 }
 
-// num
-Node *num(){
-  return new_node_num(expect_number());
-}
-
-// mul  = num ("*" num | "/" num)*
-Node *mul() {
-  Node *node = num();
-
-  for (;;) {
-    if (consume('*'))
-      node = new_node(ND_MUL, node, num());
-    else if (consume('/'))
-      node = new_node(ND_DIV, node, num());
-    else
-      return node;
-  }
-}
+static Node *expr();
+static Node *mul();
+static Node *term();
 
 // expr = mul ("+" mul | "-" mul)*
 Node *expr() {
@@ -173,6 +158,33 @@ Node *expr() {
     else
       return node;
   }
+}
+
+// mul  = term ("*" term | "/" term)*
+Node *mul() {
+  Node *node = term();
+
+  for (;;) {
+    if (consume('*'))
+      node = new_node(ND_MUL, node, term());
+    else if (consume('/'))
+      node = new_node(ND_DIV, node, term());
+    else
+      return node;
+  }
+}
+
+// term = num | "(" expr ")"
+Node *term() {
+  // 次のトークンが"("なら、"(" expr ")"のはず
+  if (consume('(')) {
+    Node *node = expr();
+    expect(')');
+    return node;
+  }
+
+  // そうでなければ数値のはず
+  return new_node_num(expect_number());
 }
 
 // スタックマシン生成
