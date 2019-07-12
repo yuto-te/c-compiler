@@ -144,6 +144,7 @@ Node *new_node_num(int val) {
 
 static Node *expr();
 static Node *mul();
+static Node *unary();
 static Node *term();
 
 // expr = mul ("+" mul | "-" mul)*
@@ -160,18 +161,28 @@ Node *expr() {
   }
 }
 
-// mul  = term ("*" term | "/" term)*
+// mul  = unary ("*" unary | "/" unary)*
 Node *mul() {
-  Node *node = term();
+  Node *node = unary();
 
   for (;;) {
     if (consume('*'))
-      node = new_node(ND_MUL, node, term());
+      node = new_node(ND_MUL, node, unary());
     else if (consume('/'))
-      node = new_node(ND_DIV, node, term());
+      node = new_node(ND_DIV, node, unary());
     else
       return node;
   }
+}
+
+// unary = ("+" | "-")? term
+Node *unary(){
+  if (consume('+'))
+    return term();
+  else if (consume('-'))
+    return new_node(ND_SUB, new_node_num(0), term());
+  else
+    return term();
 }
 
 // term = num | "(" expr ")"
