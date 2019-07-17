@@ -1,0 +1,5 @@
+language: c
+script:
+  - cd 1cc
+  - chmod +x test.sh
+  - make test
