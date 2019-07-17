@@ -29,6 +29,10 @@ typedef enum {
   ND_SUB, // -
   ND_MUL, // *
   ND_DIV, // /
+  ND_EQ,  // ==
+  ND_NEQ, // !=
+  ND_ELT, // <=
+  ND_LT,  // <
   ND_NUM, // 整数
 } NodeKind;
 
@@ -55,35 +59,9 @@ void error(char *fmt, ...) {
   exit(1);
 }
 
-// 次のトークンが期待している記号のときには，トークンを1つ読み進めて真を返す．
-// それ以外の場合には偽を返す．
-bool consume(char *op) {
-  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
-    return false;
-  token = token->next;
-  return true;
-}
-
-// 次のトークンが期待している記号のときには，トークンを1つ読み進める．
-// それ以外の場合にはエラーを報告する．
-void expect(char *op) {
-  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
-    error("'%c'ではありません", op);
-  token = token->next;
-}
-
-// 次のトークンが数値の場合，トークンを1つ読み進めてその数値を返す．
-// それ以外の場合にはエラーを報告する．
-int expect_number() {
-  if (token->kind != TK_NUM)
-    error("数ではありません");
-  int val = token->val;
-  token = token->next;
-  return val;
-}
-
-bool at_eof() {
-  return token->kind == TK_EOF;
+// Returns true if s1 starts with s2.
+static bool startwith(char *s1, char *s2) {
+  return !strncmp(s1, s2, strlen(s2));
 }
 
 // 新しいトークンを作成してcurに繋げる
@@ -108,9 +86,20 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    // strncmp: str1とstr2が等しいならば0, str1>str2ならば正の値, str1<str2ならば負の値を返す
-    // 0 == False, !0 == Trueより否定しないと正しい判定にならないことに注意する
-    if (!strncmp(p, "+", 1) || !strncmp(p, "-", 1) || !strncmp(p, "*", 1) || !strncmp(p, "/", 1) || !strncmp(p, "(", 1) || !strncmp(p, ")", 1)) {
+    if (startwith(p, "==") || startwith(p, "!=") || startwith(p, ">=") || startwith(p, "<=")) {
+      cur = new_token(TK_RESERVED, cur, p);
+      p += 2;
+      cur->len = 2;
+      continue;
+    }
+
+    if (startwith(p, ">") || startwith(p, "<")) {
+      cur = new_token(TK_RESERVED, cur, p++);
+      cur->len = 1;
+      continue;
+    }
+
+    if (startwith(p, "+") || startwith(p, "-") || startwith(p, "*") || startwith(p, "/") || startwith(p, "(") || startwith(p, ")")) {
       cur = new_token(TK_RESERVED, cur, p++);
       cur->len = 1;
       continue;
@@ -146,13 +135,81 @@ Node *new_node_num(int val) {
   return node;
 }
 
+// 次のトークンが期待している記号のときには，トークンを1つ読み進めて真を返す．
+// それ以外の場合には偽を返す．
+bool consume(char *op) {
+  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
+    return false;
+  token = token->next;
+  return true;
+}
+
+// 次のトークンが期待している記号のときには，トークンを1つ読み進める．
+// それ以外の場合にはエラーを報告する．
+void expect(char *op) {
+  if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
+    error("'%c'ではありません", op);
+  token = token->next;
+}
+
+// 次のトークンが数値の場合，トークンを1つ読み進めてその数値を返す．
+// それ以外の場合にはエラーを報告する．
+int expect_number() {
+  if (token->kind != TK_NUM)
+    error("数ではありません");
+  int val = token->val;
+  token = token->next;
+  return val;
+}
+
+bool at_eof() {
+  return token->kind == TK_EOF;
+}
+
 static Node *expr();
+static Node *equality();
+static Node *relational();
+static Node *add();
 static Node *mul();
 static Node *unary();
 static Node *term();
 
-// expr = mul ("+" mul | "-" mul)*
+// expr = equality
 Node *expr() {
+  return equality();
+}
+
+// equality = relational ("==" relational | "!=" relational)*
+Node *equality(){
+  Node *node = relational();
+
+  if (consume("=="))
+    node = new_node(ND_EQ, node, relational());
+  else if (consume("!="))
+    node = new_node(ND_NEQ, node, relational());
+
+  return node;
+}
+
+// relational = add ("<" add | "<=" add | ">" add | ">=" add)*
+Node *relational(){
+  Node *node = add();
+
+  if (consume("<="))
+    node = new_node(ND_ELT, node, add());
+  else if (consume("<"))
+    node = new_node(ND_LT, node, add());
+  // 両辺を入れ替えることで>と>=を<と<=に変換する
+  else if (consume(">="))
+    node = new_node(ND_ELT, add(), node);
+  else if (consume(">"))
+    node = new_node(ND_LT, add(), node);
+
+  return node;
+}
+
+// add = mul ("+" mul | "-" mul)*
+Node *add(){
   Node *node = mul();
 
   for (;;) {
@@ -228,6 +285,29 @@ void gen(Node *node) {
   case ND_DIV:
     printf("  cqo\n");
     printf("  idiv rdi\n");
+    break;
+  case ND_EQ:
+    printf("  cmp rax, rdi\n");
+    printf("  sete al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_NEQ:
+    printf("  cmp rax, rdi\n");
+    printf("  setne al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_LT:
+    printf("  cmp rax, rdi\n");
+    printf("  setl al\n");
+    printf("  movzb rax, al\n");
+    break;
+  case ND_ELT:
+    printf("  cmp rax, rdi\n");
+    printf("  setle al\n");
+    printf("  movzb rax, al\n");
+    break;
+  default:
+    error("実装されていないトークンです");
   }
 
   printf("  push rax\n");
