@@ -37,6 +37,12 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (startwith(p, ";")) {
+      cur = new_token(TK_RESERVED, cur, p++);
+      cur->len = 1;
+      continue;
+    }
+
     if (startwith(p, "==") || startwith(p, "!=") || startwith(p, ">=") || startwith(p, "<=")) {
       cur = new_token(TK_RESERVED, cur, p);
       p += 2;
@@ -50,8 +56,14 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (startwith(p, "+") || startwith(p, "-") || startwith(p, "*") || startwith(p, "/") || startwith(p, "(") || startwith(p, ")")) {
+    if (startwith(p, "+") || startwith(p, "-") || startwith(p, "*") || startwith(p, "/") || startwith(p, "(") || startwith(p, ")") || startwith(p, "=")) {
       cur = new_token(TK_RESERVED, cur, p++);
+      cur->len = 1;
+      continue;
+    }
+
+    if ('a' <= *p && *p <= 'z') {
+      cur = new_token(TK_IDENT, cur, p++);
       cur->len = 1;
       continue;
     }
@@ -117,9 +129,32 @@ bool at_eof() {
   return token->kind == TK_EOF;
 }
 
-// expr = equality
+// program = stmt*
+Node *program() {
+  int i = 0;
+  while(!at_eof())
+    code[i++] = stmt();
+  code[i] = NULL;
+}
+
+// stmt = expr ";"
+Node *stmt() {
+  Node *node = expr();
+  expect(";");
+  return node;
+}
+
+// expr = assign
 Node *expr() {
-  return equality();
+  return assign();
+}
+
+// assign = equality ("=" assign)?
+Node *assign() {
+  Node *node = equality();
+  if (consume("="))
+    node = new_node(ND_ASSIGN, node, assign());
+  return node;
 }
 
 // equality = relational ("==" relational | "!=" relational)*
@@ -189,12 +224,20 @@ Node *unary(){
     return term();
 }
 
-// term = num | "(" expr ")"
+// term = num | ident | "(" expr ")"
 Node *term() {
   // 次のトークンが"("なら、"(" expr ")"のはず
   if (consume("(")) {
     Node *node = expr();
     expect(")");
+    return node;
+  }
+
+  if (token->kind == TK_IDENT) {
+    Node *node = calloc(1, sizeof(Node));
+    node->kind = ND_LVAR;
+    node->offset = (token->str[0] - 'a' + 1) * 8;
+    token = token->next;
     return node;
   }
 
