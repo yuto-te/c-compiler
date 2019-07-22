@@ -15,6 +15,14 @@ bool startwith(char *s1, char *s2) {
   return !strncmp(s1, s2, strlen(s2));
 }
 
+// 与えられた文字が英数字化アンダースコアかどうかを判定する
+int is_alnum(char c) {
+  return ('a' <= c && c <= 'z') ||
+         ('A' <= c && c <= 'Z') ||
+         ('0' <= c && c <= '9') ||
+         (c == '_');
+}
+
 // 新しいトークンを作成してcurに繋げる
 Token *new_token(TokenKind kind, Token *cur, char *str) {
   Token *tok = calloc(1, sizeof(Token));
@@ -62,15 +70,22 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if ('a' <= *p && *p <= 'z') {
-      if (cur->kind == TK_IDENT) {
-        cur->len +=1;
-        p++;
-      }
-      else {
-        cur = new_token(TK_IDENT, cur, p++);
-        cur->len = 1;
-      }
+    if (!is_alnum(*(p-1)) && startwith(p, "return") && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p);
+      p += 6;
+      cur->len = 6;
+      continue;
+    }
+
+    if (cur->kind != TK_IDENT && (*p == '_' || ('a' <= *p && *p <= 'z'))) {
+      cur = new_token(TK_IDENT, cur, p++);
+      cur->len = 1;
+      continue;
+    }
+
+    if (cur->kind == TK_IDENT && is_alnum(*p)) {
+      cur->len +=1;
+      p++;
       continue;
     }
 
@@ -133,8 +148,9 @@ void expect(char *op) {
 // 次のトークンが数値の場合，トークンを1つ読み進めてその数値を返す．
 // それ以外の場合にはエラーを報告する．
 int expect_number() {
-  if (token->kind != TK_NUM)
+  if (token->kind != TK_NUM) {
     error("数ではありません");
+  }
   int val = token->val;
   token = token->next;
   return val;
@@ -152,9 +168,20 @@ Node *program() {
   code[i] = NULL;
 }
 
-// stmt = expr ";"
+// stmt    = expr ";"
+//         | "return" expr ";"
 Node *stmt() {
-  Node *node = expr();
+  Node *node;
+  if (token->kind == TK_RETURN) {
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_RETURN;
+    token = token->next;
+    node->lhs = expr();
+  }
+  else {
+    node = expr();
+  }
+
   expect(";");
   return node;
 }
