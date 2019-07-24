@@ -11,6 +11,10 @@ typedef enum {
   TK_IDENT,    // 識別子
   TK_NUM,      // 整数トークン
   TK_EOF,      // 入力の終わりを表すトークン
+  TK_IF,       // if
+  TK_ELSE,     // else
+  TK_WHILE,    // while
+  TK_FOR,      // for
   TK_RETURN,   // return
 } TokenKind;
 
@@ -38,6 +42,10 @@ typedef enum {
   ND_ELT,    // <=
   ND_LT,     // <
   ND_NUM,    // 整数
+  ND_IF,     // if
+  ND_ELSE,   // else
+  ND_WHILE,  // while
+  ND_FOR,    // for
   ND_RETURN, // return
 } NodeKind;
 

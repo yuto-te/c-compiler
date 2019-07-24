@@ -70,6 +70,34 @@ Token *tokenize(char *p) {
       continue;
     }
 
+    if (!is_alnum(*(p-1)) && startwith(p, "if") && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p);
+      p += 2;
+      cur->len = 2;
+      continue;
+    }
+
+    if (!is_alnum(*(p-1)) && startwith(p, "else") && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p);
+      p += 4;
+      cur->len = 4;
+      continue;
+    }
+
+    if (!is_alnum(*(p-1)) && startwith(p, "while") && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p);
+      p += 5;
+      cur->len = 5;
+      continue;
+    }
+
+    if (!is_alnum(*(p-1)) && startwith(p, "for") && !is_alnum(p[6])) {
+      cur = new_token(TK_RETURN, cur, p);
+      p += 3;
+      cur->len = 3;
+      continue;
+    }
+
     if (!is_alnum(*(p-1)) && startwith(p, "return") && !is_alnum(p[6])) {
       cur = new_token(TK_RETURN, cur, p);
       p += 6;
@@ -169,6 +197,9 @@ Node *program() {
 }
 
 // stmt    = expr ";"
+//         | "if" "(" expr ")" stmt ("else" stmt)?
+//         | "while" "(" expr ")" stmt
+//         | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //         | "return" expr ";"
 Node *stmt() {
   Node *node;
