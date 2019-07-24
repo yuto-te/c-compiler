@@ -209,6 +209,32 @@ Node *stmt() {
     token = token->next;
     node->lhs = expr();
   }
+  else if (token->kind == TK_IF) {
+    expect("(");
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_IF;
+    node->lhs = expr();
+    expect(")");
+    node->rhs = stmt();
+    // if (token->kind == TK_ELSE) {
+
+    // }
+  }
+  else if (token->kind == TK_WHILE) {
+    expect("(");
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_WHILE;
+    node->lhs = expr();
+    expect(")");
+    node->rhs = stmt();
+  }
+  else if (token->kind == TK_FOR) {
+    expect("(");
+    node = calloc(1, sizeof(Node));
+    node->kind = ND_FOR;
+    expect(")");
+    node->rhs = stmt();
+  }
   else {
     node = expr();
   }
