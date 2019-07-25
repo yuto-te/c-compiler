@@ -58,6 +58,21 @@ struct Node {
   Node *rhs;     // 右辺
   int val;       // kindがND_NUMの場合のみ使う
   int offset;    // kindがND_LVARの場合のみ使う
+  struct {
+    Node *test;      // test expression inside the parenthesis ()
+    Node *stmt;   // statements inside the body of if
+    Node *else_stmt; // optional else statement
+  } if_;
+  struct {
+    Node *test;       // test expression
+    Node *stmt; // statement inside the body of loop
+  } while_;
+  struct {
+    Node *init;     // initialization statement
+    Node *test;     // test expression
+    Node *update;   // update statement
+    Node *stmt; // statement inside the body of loop
+  } for_;
 };
 
 typedef struct LVar LVar;

@@ -213,27 +213,46 @@ Node *stmt() {
     expect("(");
     node = calloc(1, sizeof(Node));
     node->kind = ND_IF;
-    node->lhs = expr();
+    node->if_.test = expr();
     expect(")");
-    node->rhs = stmt();
-    // if (token->kind == TK_ELSE) {
-
-    // }
+    node->if_.stmt = stmt();
+    node->if_.else_stmt = NULL;
+    if (token->kind == TK_ELSE) {
+      node->if_.else_stmt = stmt();
+    }
   }
   else if (token->kind == TK_WHILE) {
     expect("(");
     node = calloc(1, sizeof(Node));
     node->kind = ND_WHILE;
-    node->lhs = expr();
+    node->while_.test = expr();
     expect(")");
-    node->rhs = stmt();
+    node->while_.stmt = stmt();
   }
   else if (token->kind == TK_FOR) {
     expect("(");
     node = calloc(1, sizeof(Node));
     node->kind = ND_FOR;
+    if (consume(";"))
+      node->for_.init = NULL;
+    else {
+      node->for_.init = expr();
+      expect(";");
+      if (consume(";"))
+        node->for_.test = NULL;
+      else {
+        node->for_.test = expr();
+        expect(";");
+        if (consume(";"))
+          node->for_.update = NULL;
+        else {
+          node->for_.update = expr();
+          expect(";");
+        }
+      }
+    }
     expect(")");
-    node->rhs = stmt();
+    node->for_.stmt = stmt();
   }
   else {
     node = expr();
