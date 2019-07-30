@@ -70,29 +70,29 @@ Token *tokenize(char *p) {
       continue;
     }
 
-    if (!is_alnum(*(p-1)) && startwith(p, "if") && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p);
+    if (!is_alnum(*(p-1)) && startwith(p, "if") && !is_alnum(p[2])) {
+      cur = new_token(TK_IF, cur, p);
       p += 2;
       cur->len = 2;
       continue;
     }
 
-    if (!is_alnum(*(p-1)) && startwith(p, "else") && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p);
+    if (!is_alnum(*(p-1)) && startwith(p, "else") && !is_alnum(p[4])) {
+      cur = new_token(TK_ELSE, cur, p);
       p += 4;
       cur->len = 4;
       continue;
     }
 
-    if (!is_alnum(*(p-1)) && startwith(p, "while") && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p);
+    if (!is_alnum(*(p-1)) && startwith(p, "while") && !is_alnum(p[5])) {
+      cur = new_token(TK_WHILE, cur, p);
       p += 5;
       cur->len = 5;
       continue;
     }
 
-    if (!is_alnum(*(p-1)) && startwith(p, "for") && !is_alnum(p[6])) {
-      cur = new_token(TK_RETURN, cur, p);
+    if (!is_alnum(*(p-1)) && startwith(p, "for") && !is_alnum(p[3])) {
+      cur = new_token(TK_FOR, cur, p);
       p += 3;
       cur->len = 3;
       continue;
@@ -169,7 +169,7 @@ Token *consume_ident() {
 // それ以外の場合にはエラーを報告する．
 void expect(char *op) {
   if (token->kind != TK_RESERVED || token->len != strlen(op) || memcmp(token->str, op, token->len))
-    error("'%c'ではありません", op);
+    error("%s: '%c'ではありません", token->str, op);
   token = token->next;
 }
 
@@ -189,11 +189,82 @@ bool at_eof() {
 }
 
 // program = stmt*
-Node *program() {
+void program() {
   int i = 0;
   while(!at_eof())
     code[i++] = stmt();
   code[i] = NULL;
+}
+
+// parse return
+Node *parse_return() {
+  Node *node;
+  node = calloc(1, sizeof(Node));
+  node->kind = ND_RETURN;
+  token = token->next;
+  node->lhs = expr();
+  expect(";");
+  return node;
+}
+
+// parse if
+Node *parse_if() {
+  Node *node;
+  node = calloc(1, sizeof(Node));
+  node->kind = ND_IF;
+  token = token->next;
+  expect("(");
+  node->if_.test = expr();
+  expect(")");
+  node->if_.stmt = stmt();
+  node->if_.else_stmt = NULL;
+  if (token->kind == TK_ELSE) {
+    node->if_.else_stmt = stmt();
+  }
+  return node;
+}
+
+// parse while
+Node *parse_while() {
+  Node *node;
+  node = calloc(1, sizeof(Node));
+  node->kind = ND_WHILE;
+  token = token->next;
+  expect("(");
+  node->while_.test = expr();
+  expect(")");
+  node->while_.stmt = stmt();
+  return node;
+}
+
+// parse for
+Node *parse_for() {
+  Node *node;
+  node = calloc(1, sizeof(Node));
+  node->kind = ND_FOR;
+  token = token->next;
+  expect("(");
+  if (consume(";"))
+    node->for_.init = NULL;
+  else {
+    node->for_.init = expr();
+    expect(";");
+    if (consume(";"))
+      node->for_.test = NULL;
+    else {
+      node->for_.test = expr();
+      expect(";");
+      if (consume(";"))
+        node->for_.update = NULL;
+      else {
+        node->for_.update = expr();
+        expect(";");
+      }
+    }
+  }
+  expect(")");
+  node->for_.stmt = stmt();
+  return node;
 }
 
 // stmt    = expr ";"
@@ -202,62 +273,19 @@ Node *program() {
 //         | "for" "(" expr? ";" expr? ";" expr? ")" stmt
 //         | "return" expr ";"
 Node *stmt() {
-  Node *node;
-  if (token->kind == TK_RETURN) {
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_RETURN;
-    token = token->next;
-    node->lhs = expr();
-  }
-  else if (token->kind == TK_IF) {
-    expect("(");
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_IF;
-    node->if_.test = expr();
-    expect(")");
-    node->if_.stmt = stmt();
-    node->if_.else_stmt = NULL;
-    if (token->kind == TK_ELSE) {
-      node->if_.else_stmt = stmt();
-    }
-  }
-  else if (token->kind == TK_WHILE) {
-    expect("(");
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_WHILE;
-    node->while_.test = expr();
-    expect(")");
-    node->while_.stmt = stmt();
-  }
-  else if (token->kind == TK_FOR) {
-    expect("(");
-    node = calloc(1, sizeof(Node));
-    node->kind = ND_FOR;
-    if (consume(";"))
-      node->for_.init = NULL;
-    else {
-      node->for_.init = expr();
-      expect(";");
-      if (consume(";"))
-        node->for_.test = NULL;
-      else {
-        node->for_.test = expr();
-        expect(";");
-        if (consume(";"))
-          node->for_.update = NULL;
-        else {
-          node->for_.update = expr();
-          expect(";");
-        }
-      }
-    }
-    expect(")");
-    node->for_.stmt = stmt();
-  }
-  else {
-    node = expr();
-  }
+  if (token->kind == TK_RETURN)
+    return parse_return();
 
+  if (token->kind == TK_IF)
+    return parse_if();
+
+  if (token->kind == TK_WHILE)
+    return parse_while();
+
+  if (token->kind == TK_FOR)
+    return parse_for();
+
+  Node *node = expr();
   expect(";");
   return node;
 }

@@ -60,18 +60,18 @@ struct Node {
   int offset;    // kindがND_LVARの場合のみ使う
   struct {
     Node *test;      // test expression inside the parenthesis ()
-    Node *stmt;   // statements inside the body of if
+    Node *stmt;      // statements inside the body of if
     Node *else_stmt; // optional else statement
   } if_;
   struct {
-    Node *test;       // test expression
-    Node *stmt; // statement inside the body of loop
+    Node *test;     // test expression
+    Node *stmt;     // statement inside the body of loop
   } while_;
   struct {
     Node *init;     // initialization statement
     Node *test;     // test expression
     Node *update;   // update statement
-    Node *stmt; // statement inside the body of loop
+    Node *stmt;     // statement inside the body of loop
   } for_;
 };
 
@@ -110,7 +110,11 @@ void expect(char *op);
 int expect_number();
 bool at_eof();
 
-Node *program();
+void program();
+Node *parse_return();
+Node *parse_if();
+Node *parse_while();
+Node *parse_for();
 Node *stmt();
 Node *expr();
 Node *assign();
