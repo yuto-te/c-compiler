@@ -250,20 +250,19 @@ Node *parse_for() {
   else {
     node->for_.init = expr();
     expect(";");
-    if (consume(";"))
-      node->for_.test = NULL;
-    else {
-      node->for_.test = expr();
-      expect(";");
-      if (consume(";"))
-        node->for_.update = NULL;
-      else {
-        node->for_.update = expr();
-        expect(";");
-      }
-    }
   }
-  expect(")");
+  if (consume(";"))
+    node->for_.test = NULL;
+  else {
+    node->for_.test = expr();
+    expect(";");
+  }
+  if (consume(")"))
+    node->for_.update = NULL;
+  else {
+    node->for_.update = expr();
+    expect(")");
+  }
   node->for_.stmt = stmt();
   return node;
 }
