@@ -41,4 +41,5 @@ try 5 "return 5; return 6;"
 try 2 "a = 1; if (a == 1) return 2;"
 try 4 "a = 1; if (a != 1) return 3; else return 4;"
 try 16 "i=1; while(i<10) i=i+i; i;"
+try 55 "i=0; j=0; for (i=0; i<=10; i=i+1) j=i+j; j;"
 echo OK
