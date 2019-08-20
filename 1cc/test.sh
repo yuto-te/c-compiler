@@ -38,5 +38,8 @@ try 3 "fo0 = 1; fo0 + 2;"
 try 14 "foo = 3; _bar = 5 * 6 - 8; foo + _bar / 2;"
 try 14 "areturn = 3; b = 5 * 6 - 8; return areturn + b / 2;"
 try 5 "return 5; return 6;"
-
+try 2 "a = 1; if (a == 1) return 2;"
+try 4 "a = 1; if (a != 1) return 3; else return 4;"
+try 16 "i=1; while(i<10) i=i+i; i;"
+try 55 "i=0; j=0; for (i=0; i<=10; i=i+1) j=i+j; j;"
 echo OK

@@ -41,6 +41,52 @@ void gen(Node *node) {
       return;
   }
 
+  switch (node->kind) {
+  case ND_IF:
+    if (node->if_.else_stmt) {
+      gen(node->if_.test);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je  .Lelse\n");
+      gen(node->if_.stmt);
+      printf("  jmp .Lend\n");
+      printf(".Lelse:\n");
+      gen(node->if_.else_stmt);
+      printf(".Lend:\n");
+    }
+    else {
+      gen(node->if_.test);
+      printf("  pop rax\n");
+      printf("  cmp rax, 0\n");
+      printf("  je .Lend\n");
+      gen(node->if_.stmt);
+      printf(".Lend:\n");
+    }
+    return;
+  case ND_WHILE:
+    printf(".Lbegin:\n");
+    gen(node->while_.test);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("  je  .Lend\n");
+    gen(node->while_.stmt);
+    printf("jmp .Lbegin\n");
+    printf(".Lend:\n");
+    return;
+  case ND_FOR:
+    gen(node->for_.init);
+    printf(".Lbegin:\n");
+    gen(node->for_.test);
+    printf("  pop rax\n");
+    printf("  cmp rax, 0\n");
+    printf("je  .Lend\n");
+    gen(node->for_.stmt);
+    gen(node->for_.update);
+    printf("  jmp .Lbegin\n");
+    printf(".Lend:\n");
+    return;
+  }
+
   gen(node->lhs);
   gen(node->rhs);
 
@@ -81,8 +127,6 @@ void gen(Node *node) {
     printf("  setle al\n");
     printf("  movzb rax, al\n");
     break;
-  default:
-    error("実装されていないトークンです");
   }
 
   printf("  push rax\n");
