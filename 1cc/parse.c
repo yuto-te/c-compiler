@@ -219,6 +219,7 @@ Node *parse_if() {
   node->if_.stmt = stmt();
   node->if_.else_stmt = NULL;
   if (token->kind == TK_ELSE) {
+    token = token->next;
     node->if_.else_stmt = stmt();
   }
   return node;
