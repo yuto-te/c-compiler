@@ -1,5 +1,7 @@
 #include "1cc.h"
 
+int labelseq = 1;
+
 void gen_lval(Node *node) {
   if (node->kind != ND_LVAR)
     error("代入の左辺値が変数ではありません");
@@ -42,49 +44,55 @@ void gen(Node *node) {
   }
 
   switch (node->kind) {
-  case ND_IF:
-    if (node->if_.else_stmt) {
-      gen(node->if_.test);
+    case ND_IF: {
+      int seq = labelseq++;
+      if (node->if_.else_stmt) {
+        gen(node->if_.test);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je  .Lelse%d\n", seq);
+        gen(node->if_.stmt);
+        printf("  jmp .Lend%d\n", seq);
+        printf(".Lelse%d:\n", seq);
+        gen(node->if_.else_stmt);
+        printf(".Lend%d:\n", seq);
+      }
+      else {
+        gen(node->if_.test);
+        printf("  pop rax\n");
+        printf("  cmp rax, 0\n");
+        printf("  je .Lend%d\n", seq);
+        gen(node->if_.stmt);
+        printf(".Lend%d:\n", seq);
+      }
+      return;
+    }
+    case ND_WHILE: {
+      int seq = labelseq++;
+      printf(".Lbegin%d:\n", seq);
+      gen(node->while_.test);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je  .Lelse\n");
-      gen(node->if_.stmt);
-      printf("  jmp .Lend\n");
-      printf(".Lelse:\n");
-      gen(node->if_.else_stmt);
-      printf(".Lend:\n");
+      printf("  je  .Lend%d\n", seq);
+      gen(node->while_.stmt);
+      printf("  jmp .Lbegin%d\n", seq);
+      printf(".Lend%d:\n", seq);
+      return;
     }
-    else {
-      gen(node->if_.test);
+    case ND_FOR: {
+      int seq = labelseq++;
+      gen(node->for_.init);
+      printf(".Lbegin%d:\n", seq);
+      gen(node->for_.test);
       printf("  pop rax\n");
       printf("  cmp rax, 0\n");
-      printf("  je .Lend\n");
-      gen(node->if_.stmt);
-      printf(".Lend:\n");
+      printf("  je  .Lend%d\n", seq);
+      gen(node->for_.stmt);
+      gen(node->for_.update);
+      printf("  jmp .Lbegin%d\n", seq);
+      printf(".Lend%d:\n", seq);
+      return;
     }
-    return;
-  case ND_WHILE:
-    printf(".Lbegin:\n");
-    gen(node->while_.test);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
-    printf("  je  .Lend\n");
-    gen(node->while_.stmt);
-    printf("jmp .Lbegin\n");
-    printf(".Lend:\n");
-    return;
-  case ND_FOR:
-    gen(node->for_.init);
-    printf(".Lbegin:\n");
-    gen(node->for_.test);
-    printf("  pop rax\n");
-    printf("  cmp rax, 0\n");
-    printf("je  .Lend\n");
-    gen(node->for_.stmt);
-    gen(node->for_.update);
-    printf("  jmp .Lbegin\n");
-    printf(".Lend:\n");
-    return;
   }
 
   gen(node->lhs);
