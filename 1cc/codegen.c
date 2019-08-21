@@ -70,7 +70,7 @@ void gen(Node *node) {
     printf("  cmp rax, 0\n");
     printf("  je  .Lend\n");
     gen(node->while_.stmt);
-    printf("jmp .Lbegin\n");
+    printf("  jmp .Lbegin\n");
     printf(".Lend:\n");
     return;
   case ND_FOR:
@@ -79,7 +79,7 @@ void gen(Node *node) {
     gen(node->for_.test);
     printf("  pop rax\n");
     printf("  cmp rax, 0\n");
-    printf("je  .Lend\n");
+    printf("  je  .Lend\n");
     gen(node->for_.stmt);
     gen(node->for_.update);
     printf("  jmp .Lbegin\n");
